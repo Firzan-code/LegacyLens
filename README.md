@@ -1,4 +1,4 @@
-# 🛡️ SDG-16 Sentinel
+# 🛡️ LegacyLens
 
 > **Autonomous Public Procurement Integrity Engine**
 > Mendeteksi dan membekukan indikasi korupsi pengadaan **sebelum** dana dicairkan.
@@ -15,13 +15,13 @@
 
 ## 📌 Ringkasan
 
-**SDG-16 Sentinel** adalah mesin integritas pengadaan berbasis *multi-agent AI* yang menganalisis Rencana Anggaran Biaya (RAB) dan profil vendor secara otomatis, menghitung **Risk Score** 0–100, lalu **membekukan transaksi** yang melewati ambang aman — semuanya sebelum uang berpindah.
+**LegacyLens** adalah mesin integritas pengadaan berbasis *multi-agent AI* yang menganalisis Rencana Anggaran Biaya (RAB) dan profil vendor secara otomatis, menghitung **Risk Score** 0–100, lalu **membekukan transaksi** yang melewati ambang aman — semuanya sebelum uang berpindah.
 
 Proyek ini menyasar **SDG 16, Target 16.5** (mengurangi korupsi dan penyuapan) dan **16.6** (membangun lembaga yang efektif, akuntabel, transparan).
 
 **Pergeseran paradigma yang ditawarkan:**
 
-| | Pengawasan konvensional | SDG-16 Sentinel |
+| | Pengawasan konvensional | LegacyLens |
 |---|---|---|
 | Waktu deteksi | Setelah dana cair (audit tahunan) | Sebelum dana cair (detik) |
 | Cakupan | Sampel dokumen | Seluruh transaksi |
