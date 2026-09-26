@@ -1,60 +1,55 @@
-# 8. Frontend State
+# 8. Frontend State — Dashboard LegacyLens (Opsional)
 
-## 8.1 State Machine
+Bagian ini hanya relevan **jika** kalian memutuskan membangun dashboard ringan (lihat `6_UI_UX_SPEC.md`). Kalau tidak, file ini boleh diabaikan.
 
-```
-        ┌───────┐  submit form / pilih skenario   ┌──────────┐
-        │ IDLE  │ ───────────────────────────────► │ LOADING  │
-        └───────┘                                  └────┬─────┘
-            ▲                                            │
-            │                                 response 200│
-            │                          ┌────────────────┬─┴─────────────┐
-            │                          ▼                 ▼              ▼
-      reset/baru   ┌────────────┐  ┌────────────┐  ┌────────────┐
-            │       │ APPROVED   │  │ FROZEN     │  │ ERROR      │
-            └───────┤ (hijau)    │  │ (merah)    │  │ (422/500/  │
-                     └────────────┘  └────────────┘  │ network)   │
-                                                       └────────────┘
-```
+## 8.1 Prinsip
+Dashboard bersifat **statis dan read-only** — tidak ada backend, tidak ada database, tidak ada API call ke Bob. Semua data berasal dari **satu file** `impact_report.md` yang di-generate Bob, di-parse di sisi client.
 
-Direpresentasikan sebagai satu `type ResultState` di frontend, bukan beberapa boolean lepas (`isLoading`, `isError`, dst.) — supaya tidak ada kombinasi state yang seharusnya mustahil (mis. `isLoading=true` dan `isError=true` bersamaan).
-
+## 8.2 State Utama (kalau pakai React/Next.js)
 ```ts
-type ResultState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "approved"; data: AnalyzeResponse }
-  | { status: "frozen"; data: AnalyzeResponse }
-  | { status: "error"; kind: "validation" | "server" | "network"; message: string };
+type ImpactRow = {
+  file: string;
+  changeType: string;
+  reason: string;
+};
+
+type RippleRow = {
+  file: string;
+  connectedVia: string;
+  riskLevel: "Tinggi" | "Sedang" | "Rendah";
+};
+
+type TestResult = {
+  testName: string;
+  status: "Lolos" | "Gagal";
+  note: string;
+};
+
+type ReportState = {
+  summary: {
+    filesAnalyzed: number;
+    filesChanged: number;
+    filesImpacted: number;
+    finalStatus: "Aman" | "Perlu review" | "Ada bug";
+  };
+  changes: ImpactRow[];
+  rippleMap: RippleRow[];
+  testResults: TestResult[];
+  rootCauseTrace: string | null;
+  recommendations: string[];
+};
 ```
 
-## 8.2 Pemetaan State → UI
+## 8.3 Alur Load Data
+1. File `impact_report.md` diimpor secara statis saat build (bukan fetch runtime — tidak ada backend).
+2. Di-parse jadi struktur `ReportState` di atas (parsing sederhana berbasis heading markdown, karena struktur `impact_report.md` sudah konsisten sesuai `7_OUTPUT_SPEC.md`).
+3. State ini dipakai untuk render 3 halaman (overview, impact map, full report) sesuai `6_UI_UX_SPEC.md`.
 
-| State | `TransactionForm` | `CircuitBreakerPanel` | `ForensicReport` |
-|---|---|---|---|
-| `idle` | Aktif, tombol submit enabled | Netral (abu-abu), belum ada skor | Tersembunyi |
-| `loading` | Tombol submit disabled + spinner, seluruh field readonly | Menampilkan indikator "Menganalisis..." | Tersembunyi |
-| `approved` | Aktif kembali | Hijau, `action_taken` & `risk_score` tampil | Tampil (bisa kosong dengan pesan "Tidak ada temuan risiko") |
-| `frozen` | Aktif kembali | Merah, `action_taken` & `risk_score` tampil, sedikit animasi masuk | Tampil, terurut sesuai array `forensic_report` |
-| `error` (validation) | Aktif, pesan merah di field terkait dari `detail[].loc` | Tidak berubah dari state sebelumnya | Tidak berubah |
-| `error` (server/network) | Aktif | Tetap merah dengan pesan generik "Sistem gagal memproses — coba lagi" **jika** body error mengikuti skema fallback (`action_taken: "System Error..."`); tampilkan itu apa adanya, jangan disamarkan | Tampil bila body error menyertakan `forensic_report` (lihat `4_API_SPEC.md` §Fallback Global) |
+## 8.4 Komponen React (kalau dipakai)
+- `<SummaryCards state={summary} />`
+- `<ImpactGraph rows={rippleMap} />`
+- `<TestResultTable rows={testResults} />`
+- `<MarkdownRenderer content={rawReportMarkdown} />`
 
-## 8.3 Transisi yang Perlu Ditangani Eksplisit
-
-* **Submit ganda.** Tombol submit **wajib** disabled selama `loading` — tanpa ini, klik ganda saat demo (grogi di depan juri) bisa mengirim dua request untuk `transaction_id` yang sama.
-* **Ganti skenario saat hasil sebelumnya masih tampil.** Memilih skenario lain dari dropdown mereset state ke `idle` dan mengosongkan `CircuitBreakerPanel`/`ForensicReport` — jangan biarkan hasil lama nyangkut di layar saat form sudah berubah, itu paling sering bikin juri bingung "ini hasil yang mana."
-* **Baris di `TransactionTable` diklik.** Memuat ulang `ForensicReport` dari data yang sudah ada di state (bukan submit ulang ke backend) — masuk ke state `approved`/`frozen` sesuai data baris tersebut.
-* **Response sukses tapi bentuknya tidak sesuai skema** (mis. field hilang karena bug backend). Frontend memvalidasi bentuk response minimal (`status`, `risk_score` ada) sebelum render; jika tidak sesuai, masuk ke `error` state dengan pesan "Format respons tidak dikenali" — jangan biarkan halaman crash blank karena `undefined.map()`.
-
-## 8.4 Pesan Toast/Notifikasi
-
-| Kejadian | Pesan |
-|---|---|
-| Network error (tidak ada koneksi ke backend) | "Tidak bisa terhubung ke server. Periksa koneksi dan coba lagi." |
-| Timeout | "Analisis memakan waktu lebih lama dari biasanya. Mencoba lagi..." |
-| `422` | Tidak pakai toast — tampilkan inline di field terkait |
-| Berhasil (`approved` atau `frozen`) | Tidak pakai toast — hasil sudah cukup jelas dari `CircuitBreakerPanel`, toast tambahan hanya bikin ramai |
-
-## 8.5 Mode Mock di Frontend
-
-Frontend tidak tahu dan tidak perlu tahu apakah backend sedang mock atau live — bentuk response identik (lihat `4_API_SPEC.md` §4.3). Satu-satunya indikator visual adalah `MockModeBadge` di header yang membaca `GET /health`, murni untuk kepentingan tim sendiri saat gladi bersih, bukan bagian dari alur state di atas.
+## 8.5 Catatan
+Jangan habiskan waktu berlebihan di bagian ini — dashboard hanya nilai tambah presentasi. Prioritas utama tetap di kualitas prompt dan hasil analisis Bob (`3_PROMPTS.md`, `4_BOB_CONFIG.md`).

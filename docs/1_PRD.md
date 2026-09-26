@@ -1,70 +1,60 @@
-# 1. PRD — Product Requirements Document
+# 1. Product Requirements Document — LegacyLens
 
-## 1.1 Visi
+## 1.1 Nama Produk
+**LegacyLens** — *"Paham kode lama, upgrade dengan percaya diri, tangkap bug berantai sebelum sampai production."*
 
-Mengubah pengawasan pengadaan publik dari **audit pasca-kejadian** menjadi **pencegahan real-time** — dana yang mencurigakan dibekukan sebelum dicairkan, bukan diselidiki setelah hilang.
+Dibangun untuk **IBM Bob 2.0 Hackathon** (tema: *Build with purpose using IBM Bob 2.0*), fokus pada workflow developer: **application maintenance & legacy modernization**.
 
-## 1.2 Misi
+## 1.2 Problem Statement
+Developer sering takut menyentuh kode lama (legacy code) karena dua alasan:
 
-Membangun *proof of concept* yang menunjukkan bahwa tiga sinyal risiko sederhana — kewajaran harga, umur legal vendor, dan konsistensi data — bisa dihitung otomatis dan dikombinasikan menjadi satu keputusan `approved` / `frozen` yang bisa dipercaya.
+1. **Tidak paham** — kode ditulis lama, tanpa dokumentasi, oleh orang yang sudah tidak ada di tim. Butuh waktu lama untuk sekadar mengerti apa yang dilakukan sebuah fungsi/modul.
+2. **Takut efek samping** — bahkan setelah paham, developer ragu melakukan upgrade/refactor karena tidak tahu file lain mana saja yang bergantung pada kode yang mau diubah. Ketakutan ini membuat technical debt terus menumpuk — filosofi tim jadi "kalau masih jalan, jangan disentuh".
 
-## 1.3 Target SDG
+Akibatnya: modernisasi tertunda, dependency using versi usang & rawan celah keamanan, dan ketika perubahan akhirnya terpaksa dilakukan, bug berantai (cascading bugs) baru ketahuan setelah masuk production — bukan sebelum.
 
-| Target | Bunyi | Cara proyek ini berkontribusi |
-|---|---|---|
-| **16.5** | Secara substansial mengurangi korupsi dan penyuapan dalam segala bentuknya | Mendeteksi markup harga & vendor fiktif sebelum dana cair |
-| **16.6** | Mengembangkan lembaga yang efektif, akuntabel, dan transparan di semua tingkatan | Setiap keputusan meninggalkan jejak audit (`audit_logs`) yang bisa ditelusuri, bukan kotak hitam |
+## 1.3 Target Pengguna
+- Developer yang mewarisi (inherit) codebase lama tanpa dokumentasi memadai.
+- Tech lead yang perlu menilai risiko sebelum menyetujui rencana upgrade/refactor.
+- Tim kecil/startup tanpa dedicated QA yang bergantung pada review manual.
 
-## 1.4 Masalah
+## 1.4 Solusi (Ringkasan)
+LegacyLens adalah pendamping dua fase yang seluruhnya dijalankan lewat **IBM Bob IDE**, memanfaatkan *full repository context*, *agent mode*, dan *subagents*:
 
-1. Auditor manusia tidak mungkin memeriksa seluruh RAB yang masuk — sampling adalah keharusan, dan celah hidup di luar sampel.
-2. Markup harga dan vendor fiktif baru terbukti **setelah** dana cair, ketika pemulihannya sudah butuh proses hukum.
-3. Dokumen krusial (tanggal pendirian, referensi harga) sering "kebetulan" tidak lengkap — dan ketidaklengkapan itu sendiri jarang dianggap sebagai sinyal risiko.
+**Fase 1 — Understand & Modernize**
+Bob menganalisis kode lama, menjelaskan fungsinya dalam bahasa manusia, mengidentifikasi bagian berisiko, dan menyarankan langkah modernisasi (upgrade dependency, refactor pattern usang) — lalu mengeksekusinya dengan persetujuan developer.
 
-## 1.5 Pengguna Sasaran
+**Fase 2 — Predict & Catch Cascading Bugs**
+Begitu perubahan diterapkan, subagent Bob menelusuri seluruh file yang terhubung ke kode yang berubah, memprediksi dampak lintas file, menjalankan validasi (test), dan jika ada bug — melacak root cause-nya lintas file, bukan hanya di titik errornya.
 
-* **Auditor internal / APIP** — pengguna utama, menerima *flag* dan laporan forensik untuk verifikasi manual.
-* **Pejabat Pembuat Komitmen (PPK)** — melihat status transaksi sebelum menyetujui pencairan.
-* *(Roadmap)* Masyarakat umum — dashboard transparansi publik.
+Output akhir: **Modernization Impact Report** — ringkasan apa yang diubah, apa yang berisiko, dan apa yang sudah tervalidasi aman.
 
-## 1.6 Cara Kerja Singkat
+## 1.5 Fitur Bob yang Digunakan (wajib ditunjukkan ke juri)
+- **Agent mode** — eksekusi otonom untuk analisis & perubahan kode
+- **Subagents** — satu subagent khusus untuk "impact tracing" lintas file, terpisah dari subagent "code explainer"
+- **Parallel tasks** — menganalisis beberapa modul yang saling bergantung secara bersamaan
+- **Document understanding** — membaca file konfigurasi/dependency (package.json, requirements.txt, dll) sebagai konteks
+- **Custom modes** — mode khusus "Legacy Analyst" dan "Ripple Tracer"
+- **/init (AGENTS.md)** — memberi Bob konteks proyek yang persisten
 
-PPK/auditor input RAB + profil vendor → sistem memanggil 3 agen AI (`The Analyst`, `The Accountant`, `The Chief`) → sistem mengembalikan status `approved`/`frozen` beserta laporan forensik dalam hitungan detik. Alur teknis lengkap ada di [`2_ARCHITECTURE.md`](2_ARCHITECTURE.md).
+## 1.6 Success Metrics (untuk demo)
+- Waktu pemahaman kode: dari estimasi "berjam-jam baca manual" → di bawah 5 menit dengan LegacyLens.
+- Cakupan deteksi dampak: jumlah file terdampak yang berhasil diidentifikasi sebelum dijalankan test, dibandingkan yang ditemukan test itu sendiri.
+- Jumlah bug berantai yang tertangkap sebelum "production" (disimulasikan lewat sample project) dibanding baseline tanpa LegacyLens.
 
-## 1.7 In-Scope (48 Jam)
+## 1.7 Scope untuk 48 Jam (Hackathon)
+**In scope:**
+- Satu sample legacy codebase (lihat `5_SAMPLE_CODEBASE.md`) sebagai target demo.
+- Prompt/skill/custom mode Bob untuk Fase 1 dan Fase 2 (lihat `3_PROMPTS.md`, `4_BOB_CONFIG.md`).
+- Report output dalam format Markdown/HTML sederhana, ditampilkan lewat dashboard ringan (lihat `6_UI_UX_SPEC.md`).
+- Demo script end-to-end (lihat `9_DEMO_SCRIPT.md`).
 
-* [x] Endpoint tunggal `POST /api/analyze-transaction`.
-* [x] Agent 1 (kewajaran harga) & Agent 2 (umur vendor) berjalan paralel, diringkas Agent 3.
-* [x] Circuit Breaker otomatis (`risk_score ≥ 60 → frozen`).
-* [x] Dashboard: tabel transaksi, panel status, laporan forensik.
-* [x] Mode mock (`MOCK_AI=true`) untuk demo tanpa bergantung koneksi live ke AI Engine.
-* [x] Penyimpanan transaksi & audit log di Supabase.
-* [x] 3 skenario demo siap pakai (normal, markup, vendor fiktif).
+**Out of scope:**
+- Integrasi ke CI/CD sungguhan.
+- Dukungan multi-bahasa pemrograman (fokus satu stack saja untuk demo).
+- Autentikasi/multi-user (dashboard demo bersifat lokal/single-user).
 
-## 1.8 Out-of-Scope (48 Jam)
-
-Ditulis eksplisit supaya tidak ada anggota tim yang diam-diam mengerjakan ini dan kehabisan waktu untuk fitur inti:
-
-* ❌ Integrasi harga acuan real-time ke e-Katalog/LKPP — pakai dataset referensi statis.
-* ❌ Normalisasi spesifikasi teknis item (pencocokan masih berbasis nama).
-* ❌ Deteksi *splitting project* lintas transaksi.
-* ❌ Pemantauan aliran dana / deteksi *smurfing* (Agent "Cyber Forensic" — roadmap).
-* ❌ Autentikasi pengguna & kontrol akses berbasis peran.
-* ❌ Ekspor laporan ke PDF.
-* ❌ Multi-bahasa UI.
-
-## 1.9 Definisi Sukses (untuk demo)
-
-1. Tiga skenario demo menghasilkan status yang benar dan konsisten setiap kali dijalankan ulang.
-2. Waktu respons endpoint < 5 detik dalam mode live, instan dalam mode mock.
-3. Juri bisa membaca laporan forensik dan memahami **alasan** pembekuan tanpa penjelasan tambahan dari tim.
-4. Sistem tidak pernah crash / membalas HTML error mentah — kegagalan selalu berujung JSON `frozen`, bukan diam.
-
-## 1.10 Risiko & Mitigasi
-
-| Risiko | Dampak | Mitigasi |
-|---|---|---|
-| Kuota/API key IBM Bob habis saat demo | Demo gagal total | Mode mock (`MOCK_AI=true`) sebagai jalur utama saat presentasi |
-| Koneksi venue tidak stabil | Demo gagal | Rekaman video cadangan, lihat [`9_DEMO_SCRIPT.md`](9_DEMO_SCRIPT.md) |
-| Format JSON dari AI tidak valid | Pipeline putus | Validasi Pydantic + fallback skor konservatif per-agent, lihat [`3_PROMPTS.md`](3_PROMPTS.md) §Fallback |
-| Scope creep 2 orang / 48 jam | Tidak ada yang selesai penuh | Daftar Out-of-Scope di atas bersifat mengikat, bukan saran |
+## 1.8 Kepatuhan Ketentuan Hackathon
+- Bob IDE = core component (bukan cuma alat bantu nulis kode).
+- Sample codebase dipakai sebagai "dataset" — kode sendiri/open-source dengan lisensi yang mengizinkan penggunaan, tanpa data pribadi/confidential.
+- Semua task session Bob IDE yang relevan di-screenshot dan disimpan di folder `bob_sessions/` sesuai syarat submission.

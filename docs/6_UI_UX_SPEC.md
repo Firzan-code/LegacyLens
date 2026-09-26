@@ -1,86 +1,34 @@
-# 6. UI/UX Spec
+# 6. UI/UX Spec — Dashboard Report LegacyLens
 
 ## 6.1 Prinsip Desain
+Dashboard ini **murni presentasi** — tidak ada logika AI di dalamnya. Fungsinya cuma menampilkan `impact_report.md` yang dihasilkan Bob (lihat Prompt 2.4 di `3_PROMPTS.md`) dengan cara yang enak dilihat juri saat demo. Kalau waktu mepet, bagian ini boleh diskip — file Markdown mentah dari Bob pun sudah cukup untuk demo.
 
-* **Satu halaman.** Tidak perlu routing kompleks untuk PoC — semua terjadi di `app/page.tsx`.
-* **Warna membawa arti, bukan dekorasi.** Merah/kuning/hijau harus konsisten di seluruh halaman (badge, border kartu, ikon) — jangan sampai "frozen" berwarna merah di satu tempat dan oranye di tempat lain.
-* **Demo-first.** Juri akan melihat halaman ini < 3 menit. Status transaksi dan alasan pembekuan harus terbaca tanpa scroll berlebihan.
+## 6.2 Halaman yang Dibutuhkan (kalau dibangun)
 
-## 6.2 Layout Halaman
+### Halaman 1 — Ringkasan (Landing/Overview)
+- Judul project + satu kalimat tagline
+- 3 angka besar (metric card): jumlah file dianalisis, jumlah file terdampak (ripple), jumlah bug tertangkap sebelum "production"
+- Tombol/tab menuju detail report
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  🛡️ SDG-16 Sentinel                     [MOCK MODE badge] │
-├──────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────┐  ┌─────────────────────────┐ │
-│  │   FORM INPUT TRANSAKSI   │  │   CIRCUIT BREAKER PANEL  │ │
-│  │                          │  │                          │ │
-│  │  [Load Skenario 1 ▾]     │  │   🟢 / 🟡 / 🔴            │ │
-│  │  Vendor: [.........]     │  │   Status: APPROVED       │ │
-│  │  Tgl berdiri: [........] │  │   Risk Score: 0 / 100    │ │
-│  │  + Tambah item RAB       │  │                          │ │
-│  │  [ Analisis Transaksi ]  │  │   (kosong sebelum submit)│ │
-│  └─────────────────────────┘  └─────────────────────────┘ │
-├──────────────────────────────────────────────────────────┤
-│  LAPORAN FORENSIK                                          │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │ 🕵️ The Analyst — Printer: markup 128,57% ...        │   │
-│  │ 📈 The Accountant — vendor berumur 37 hari ...       │   │
-│  └────────────────────────────────────────────────────┘   │
-├──────────────────────────────────────────────────────────┤
-│  RIWAYAT TRANSAKSI                                          │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │ TRX-ID     | Vendor        | Skor | Status | Waktu  │   │
-│  │ TRX-2026-… | PT Sumber …   | 80   | 🔴     | 10:23  │   │
-│  └────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────┘
-```
+### Halaman 2 — Impact Map (visual)
+- Diagram sederhana (node-link) menunjukkan file yang diubah di tengah, dengan garis panah ke file-file yang terdampak
+- Tiap node bisa diklik untuk lihat alasan keterkaitannya (diambil langsung dari output Prompt 2.1)
 
-## 6.3 Komponen
+### Halaman 3 — Full Report
+- Render `impact_report.md` apa adanya (markdown-to-html), termasuk root cause trace dari Prompt 2.3
 
-### `TransactionForm`
-* Field vendor: nama, tanggal berdiri (date picker), NPWP (opsional).
-* Daftar item RAB dinamis (`+ Tambah item`): nama item, kuantitas, harga pengajuan, harga pasar acuan.
-* **Dropdown "Load Skenario"** — mengisi seluruh form otomatis dari `7_SEED_DATA.md` (Normal / Markup Harga / Vendor Fiktif). Ini yang dipakai saat demo, **bukan** mengetik manual di depan juri.
-* Tombol submit menampilkan status loading (spinner + teks "Menganalisis..."), disabled saat request berjalan agar tidak double-submit.
-
-### `CircuitBreakerPanel`
-* Kosong/netral sebelum ada hasil.
-* Setelah hasil datang:
-  * `approved` → border/ikon **hijau**, teks "Transaction Cleared".
-  * `frozen` → border/ikon **merah**, teks "Circuit Breaker Activated", disertai animasi ringan (mis. pulse sekali) supaya terasa sebagai *event*, bukan status statis.
-* Menampilkan `risk_score` sebagai angka besar + bar 0–100.
-
-### `ForensicReport`
-* Satu kartu per entri `forensic_report`, ikon sesuai agent (🕵️ Analyst, 📈 Accountant, ⚖️ Chief untuk kasus anomali pipeline).
-* Jika `forensic_report` kosong → tampilkan pesan positif eksplisit ("Tidak ada temuan risiko"), **jangan** biarkan section kosong tanpa keterangan — kosong tanpa label terlihat seperti bug saat demo.
-
-### `TransactionTable`
-* Menampilkan riwayat transaksi yang sudah dianalisis dalam sesi ini (state React, tidak perlu fetch ulang dari Supabase untuk PoC).
-* Baris bisa diklik untuk memuat ulang `ForensicReport` transaksi tersebut tanpa submit ulang.
-
-### `MockModeBadge`
-* Badge kecil di header, terisi dari `GET /health` → `mock_ai`. Membantu tim sendiri (bukan untuk juri) memastikan mode yang aktif saat demo tanpa buka terminal.
-
-## 6.4 Skema Warna
-
-| Status | Warna | Token Tailwind (contoh) |
-|---|---|---|
-| Approved | Hijau | `bg-green-500` / `text-green-700` |
-| Frozen | Merah | `bg-red-500` / `text-red-700` |
-| Loading/netral | Kuning-abu | `bg-amber-400` / `bg-slate-200` |
-
-## 6.5 Perilaku Error di UI
-
-| Kondisi backend | Tampilan |
+## 6.3 Komponen Visual
+| Komponen | Fungsi |
 |---|---|
-| `422` (validasi gagal) | Pesan merah di bawah field terkait, form tetap terisi |
-| `500` / fallback global | Panel Circuit Breaker tetap tampil **merah** dengan `action_taken: "System Error - Manual Audit Required"` — bukan halaman error generik. Ini justru menunjukkan fail-safe design bekerja |
-| Network error / timeout | Toast: "Tidak bisa terhubung ke server. Coba lagi." + tombol retry |
+| Metric card | Angka ringkas di halaman overview |
+| Impact graph | Visualisasi node-link sederhana (bisa pakai library ringan atau SVG manual) |
+| Status badge | Hijau = tervalidasi aman, Kuning = perlu review manual, Merah = bug ditemukan |
+| Markdown renderer | Menampilkan isi report apa adanya |
 
-Detail lengkap pemetaan state → elemen UI ada di [`8_FRONTEND_STATE.md`](8_FRONTEND_STATE.md).
+## 6.4 Alur Interaksi Demo
+1. Buka halaman overview → juri langsung lihat angka dampak (before/after).
+2. Klik impact map → tunjukkan bagaimana LegacyLens/Bob "melihat" keterkaitan antar file yang manusia mungkin lewatkan.
+3. Scroll ke full report → tunjukkan root cause trace sebagai bukti kedalaman analisis, bukan cuma tebakan.
 
-## 6.6 Aksesibilitas Minimum
-
-* Status warna selalu disertai teks/ikon (bukan warna saja) — memenuhi kebutuhan dasar dan menghindari ambiguitas saat screenshot/proyeksi ke layar venue yang kadang warnanya "menipu" di bawah lampu panggung.
-* Kontras teks pada badge merah/hijau diuji minimal terhadap standar WCAG AA sederhana (teks putih di atas warna solid, bukan warna pastel).
+## 6.5 Kalau Waktu Sangat Terbatas (Fallback)
+Skip dashboard sepenuhnya. Cukup buka `impact_report.md` langsung di GitHub (rendering markdown bawaan GitHub sudah rapi) saat demo — fokuskan waktu ke kualitas prompt & hasil analisis Bob, bukan ke polish UI.

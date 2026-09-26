@@ -1,90 +1,54 @@
-# 2. Architecture
+# 2. Arsitektur — LegacyLens
 
-## 2.1 Alur End-to-End
+## 2.1 Filosofi Arsitektur
+LegacyLens **bukan** aplikasi backend yang memanggil Bob lewat API. Bob IDE **adalah** mesin eksekusinya — semua analisis, keputusan, dan eksekusi kode dijalankan langsung di dalam Bob lewat custom mode & subagent. Bagian "produk" yang kita bangun sendiri hanyalah:
+1. Sample codebase target (bahan demo)
+2. Konfigurasi Bob (custom modes, subagents, skill) — lihat `4_BOB_CONFIG.md`
+3. Dashboard ringan untuk menampilkan output report Bob secara rapi (opsional, murni presentasi)
 
-```
-1. User (PPK/Auditor) mengisi form di dashboard Next.js
-   atau menekan tombol "Load Skenario 1/2/3" (lihat 6_UI_UX_SPEC.md)
-                    │
-                    ▼
-2. Frontend → POST /api/analyze-transaction  (satu-satunya panggilan ke backend)
-                    │
-                    ▼
-3. FastAPI menerima payload, validasi Pydantic
-   ├─ Gagal validasi → 422, tidak lanjut ke AI
-   └─ Lolos → lanjut ke langkah 4
-                    │
-                    ▼
-4. Orchestrator (kode Python, BUKAN LLM) menyiapkan:
-   - payload Agent 1: items + market_reference + transaction_id
-   - payload Agent 2: vendor profile + reference_date (dihitung server, WIB)
-     + transaction_id
-                    │
-        ┌───────────┴───────────┐
-        ▼                       ▼
-5a. Agent 1 (The Analyst)   5b. Agent 2 (The Accountant)
-    dipanggil PARALEL           dipanggil PARALEL
-    (asyncio.gather)             (asyncio.gather)
-        │                       │
-        └───────────┬───────────┘
-                     ▼
-6. Validasi JSON tiap balasan agent
-   ├─ Valid       → teruskan skor & detail apa adanya
-   └─ Invalid/gagal → skor konservatif 30 (lihat 3_PROMPTS.md §Fallback)
-                     │
-                     ▼
-7. Agent 3 (The Chief) menerima kedua hasil + original_transaction_id
-   → total_risk_score, status, forensic_report
-                     │
-                     ▼
-8. Simpan ke Supabase:
-   - transactions  (header + skor + status)
-   - rab_items     (item + markup per item)
-   - audit_logs    (input & output mentah tiap agent, append-only)
-                     │
-                     ▼
-9. Backend balas JSON ke frontend
-                     │
-                     ▼
-10. Frontend render: badge status, panel Circuit Breaker, forensic report
+## 2.2 Komponen Utama
+
+```mermaid
+flowchart TD
+    A[Sample Legacy Codebase] --> B[Bob IDE - Custom Mode: Legacy Analyst]
+    B --> C[Code Explanation + Modernization Plan]
+    C --> D{Developer Approve?}
+    D -- ya --> E[Bob Agent Mode: Eksekusi Perubahan]
+    E --> F[Bob Subagent: Ripple Tracer]
+    F --> G[Impact Map lintas file]
+    G --> H[Bob menjalankan test]
+    H --> I{Ada bug?}
+    I -- ya --> J[Subagent trace root cause lintas file]
+    I -- tidak --> K[Modernization Impact Report]
+    J --> K
+    K --> L[Dashboard Report - Markdown/HTML]
 ```
 
-## 2.2 Komponen
-
-| Komponen | Tanggung jawab | Tidak boleh |
+## 2.3 Dua Subagent Inti
+| Subagent | Tugas | Mode akses |
 |---|---|---|
-| **Frontend (Next.js)** | Form input, render hasil, tombol skenario demo | Memanggil IBM Bob / Supabase langsung, menghitung skor |
-| **Backend (FastAPI)** | Validasi, orkestrasi agent, hitung total skor final, persistensi | Mengirim HTML, meloloskan data tidak lengkap sebagai "aman" |
-| **IBM Bob 2.0** | Menjalankan 3 agent (prompt di `3_PROMPTS.md`) | — |
-| **Supabase** | Simpan transaksi & audit log | Diakses dari luar backend |
+| **Legacy Analyst** | Baca kode lama, jelaskan fungsi & risiko, susun rencana modernisasi | Read + Ask (tidak eksekusi langsung) |
+| **Ripple Tracer** | Setelah perubahan diterapkan, telusuri seluruh file yang bergantung ke kode yang berubah, prediksi dampak, jalankan test, trace root cause bug | Read + Execute (agent mode penuh) |
 
-## 2.3 Mengapa Agent 1 & 2 Paralel, Agent 3 Berurutan
+Pemisahan dua subagent ini penting untuk ditunjukkan ke juri — sesuai anjuran hackathon untuk manfaatin fitur **subagents** (isolated context per tugas), bukan satu mode besar yang mengerjakan semuanya.
 
-Agent 1 dan Agent 2 tidak saling bergantung — keduanya bisa dipanggil bersamaan dengan `asyncio.gather` untuk memangkas latensi hampir setengahnya. Agent 3 **wajib** menunggu keduanya selesai karena keputusannya adalah fungsi dari kedua skor tersebut.
-
-```python
-analyst_result, accountant_result = await asyncio.gather(
-    call_analyst(payload_1),
-    call_accountant(payload_2),
-)
-chief_result = await call_chief(analyst_result, accountant_result, transaction_id)
-```
-
-## 2.4 Non-Functional Requirements
-
-| Aspek | Target | Catatan |
+## 2.4 Tech Stack
+| Layer | Teknologi | Catatan |
 |---|---|---|
-| Timeout per panggilan agent | 8 detik | Lewat batas → diperlakukan sebagai kegagalan, masuk fallback §3_PROMPTS.md |
-| Retry | 1× per agent, tanpa backoff panjang | Demo tidak boleh menggantung lama |
-| Konsistensi | `temperature = 0` di semua panggilan | Input sama harus hasil sama, termasuk saat direplay untuk juri |
-| Availability saat demo | Mode mock sebagai jalur cadangan | Lihat `MOCK_AI=true` di `AGENT.md` §4 |
-| Audit trail | Setiap request tersimpan, tidak bisa diubah/dihapus | `audit_logs` append-only, lihat `5_DATABASE_SCHEMA.md` |
+| AI Engine / Core | **IBM Bob IDE 2.0** | Agent mode, subagents, custom modes, document understanding |
+| Sample project | Node.js/Express (lihat `5_SAMPLE_CODEBASE.md`) | Codebase demo dengan legacy pattern & dependency lama |
+| Report format | Markdown → dirender HTML | Output dari Bob disimpan sebagai file `.md` terstruktur |
+| Dashboard (opsional) | Next.js + Tailwind, statis | Hanya menampilkan report, tidak ada backend API |
+| Version control | Git/GitHub | Termasuk folder wajib `bob_sessions/` |
 
-## 2.5 Kontrak "Siapa Boleh Melakukan Apa"
+## 2.5 Alur Data
+1. Developer buka Bob IDE di root sample codebase.
+2. Jalankan `/init` agar Bob generate `AGENTS.md` — konteks persisten proyek.
+3. Aktifkan custom mode **Legacy Analyst**, jalankan prompt Fase 1 (lihat `3_PROMPTS.md`).
+4. Review hasil analisis, approve rencana modernisasi.
+5. Bob (agent mode) eksekusi perubahan kode.
+6. Otomatis lanjut ke custom mode **Ripple Tracer**, jalankan prompt Fase 2.
+7. Bob hasilkan `impact_report.md` — disalin/diimpor ke dashboard untuk presentasi.
 
-Diambil dari `AGENT.md` §3 — diulang di sini karena ini keputusan arsitektural, bukan sekadar preferensi gaya kode:
-
-1. Frontend tidak pernah menyimpan atau mengirim API key IBM Bob / Supabase.
-2. Frontend tidak menghitung `risk_score` — hanya menampilkan angka dari backend.
-3. Backend adalah satu-satunya pihak yang menyuntikkan `reference_date` — agent tidak pernah menebak tanggal hari ini.
-4. Kegagalan di titik manapun berujung ke status yang **lebih aman** (`frozen`), tidak pernah diam-diam menjadi `approved`.
+## 2.6 Kenapa Tidak Ada Backend/API Custom
+Karena syarat hackathon menegaskan Bob IDE harus jadi **core component**, kita sengaja tidak membangun API/backend terpisah yang "membungkus" Bob — itu justru mengurangi keterlihatan peran Bob di solusi. Semua logika inti (analisis, keputusan risiko, eksekusi) terjadi di dalam Bob itu sendiri.
