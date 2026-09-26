@@ -93,3 +93,82 @@ Detail konfigurasi lengkap ada di [`docs/4_BOB_CONFIG.md`](docs/4_BOB_CONFIG.md)
 ---
 
 ## 📂 Struktur Proyek
+
+legacylens/
+├── sample-project/ # Codebase demo (lihat docs/5_SAMPLE_CODEBASE.md)
+├── bob_sessions/ # Screenshot task session Bob (wajib untuk submission)
+├── dashboard/ # (opsional) Next.js statis penampil report
+├── impact_report.md # Output akhir dari Bob (di-generate saat demo)
+├── AGENT.md # Konfigurasi Bob & sumber kebenaran project
+└── docs/ # 1_PRD.md … 10_TIMELINE.md
+
+
+---
+
+## 🚀 Cara Menjalankan
+
+### Prasyarat
+- Akun Bob hackathon terkonfirmasi (`ibm-coding-challenge-uat`)
+- Bob IDE terinstal & login (lihat panduan resmi hackathon)
+
+### Langkah
+```bash
+git clone https://github.com/<username>/legacylens.git
+cd legacylens/sample-project
+```
+1. Buka folder `sample-project/` di Bob IDE.
+2. Jalankan `/init` untuk generate `AGENTS.md`.
+3. Setup custom mode **Legacy Analyst** & **Ripple Tracer** sesuai `docs/4_BOB_CONFIG.md`.
+4. Jalankan prompt Fase 1 & Fase 2 dari `docs/3_PROMPTS.md`, urut satu per satu.
+5. Hasil akhir tersimpan sebagai `impact_report.md`.
+
+---
+
+## 🎬 Skenario Demo
+
+Detail lengkap skenario bug berantai yang disiapkan ada di [`docs/5_SAMPLE_CODEBASE.md`](docs/5_SAMPLE_CODEBASE.md), dan skrip pitch lengkap ada di [`docs/9_DEMO_SCRIPT.md`](docs/9_DEMO_SCRIPT.md).
+
+---
+
+## 📚 Dokumentasi
+
+| Berkas | Isi |
+|---|---|
+| [`AGENT.md`](AGENT.md) | Konfigurasi Bob & sumber kebenaran project |
+| [`docs/1_PRD.md`](docs/1_PRD.md) | Problem statement, solusi, success metrics |
+| [`docs/2_ARCHITECTURE.md`](docs/2_ARCHITECTURE.md) | Alur sistem & komponen |
+| [`docs/3_PROMPTS.md`](docs/3_PROMPTS.md) | Daftar prompt siap pakai untuk Bob IDE |
+| [`docs/4_BOB_CONFIG.md`](docs/4_BOB_CONFIG.md) | Setup custom mode & subagent |
+| [`docs/5_SAMPLE_CODEBASE.md`](docs/5_SAMPLE_CODEBASE.md) | Bahan demo & skenario bug berantai |
+| [`docs/6_UI_UX_SPEC.md`](docs/6_UI_UX_SPEC.md) | Desain dashboard report (opsional) |
+| [`docs/7_OUTPUT_SPEC.md`](docs/7_OUTPUT_SPEC.md) | Format `impact_report.md` |
+| [`docs/8_FRONTEND_STATE.md`](docs/8_FRONTEND_STATE.md) | State dashboard (kalau dibangun) |
+| [`docs/9_DEMO_SCRIPT.md`](docs/9_DEMO_SCRIPT.md) | Naskah pitch & antisipasi pertanyaan juri |
+| [`docs/10_TIMELINE.md`](docs/10_TIMELINE.md) | Pembagian kerja 48 jam |
+
+---
+
+## 🧭 Batasan PoC
+
+- Sample codebase bersifat disiapkan sendiri untuk demo, bukan production codebase sungguhan.
+- Dashboard (jika dibangun) bersifat statis, tanpa autentikasi/multi-user.
+- Fokus pada satu bahasa/stack (Node.js) untuk demo — belum mendukung multi-bahasa.
+
+## 🗺️ Roadmap
+
+- [ ] Dukungan multi-bahasa pemrograman
+- [ ] Integrasi MCP server ke GitHub untuk auto pull request
+- [ ] Riwayat perbandingan antar-run (tracking technical debt dari waktu ke waktu)
+
+---
+
+## 👥 Tim
+
+| Peran | Nama | Tanggung jawab |
+|---|---|---|
+| Bob Config & Prompt Engineering | [Nama] | Custom mode, subagent, prompt Fase 1 & 2 |
+| Sample Project & Dashboard | [Nama] | Sample codebase, dashboard presentasi |
+
+## 📄 Lisensi
+
+MIT — lihat [`LICENSE`](LICENSE).
