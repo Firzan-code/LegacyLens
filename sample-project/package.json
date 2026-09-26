@@ -1,0 +1,20 @@
+{
+  "name": "sample-project",
+  "version": "1.0.0",
+  "description": "Legacy Node.js/Express codebase — bahan demo LegacyLens",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "moment": "2.31.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  }
+}
